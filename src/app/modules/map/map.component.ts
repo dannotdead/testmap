@@ -1,11 +1,14 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import Map from 'ol/Map';
 import View from 'ol/View';
 import OSM from 'ol/source/OSM';
 import VectorSource from 'ol/source/Vector';
-import {Circle as CircleStyle, Fill, Style} from 'ol/style';
-import {Tile as TileLayer, Vector as VectorLayer} from 'ol/layer';
-import {Draw, Modify, Snap} from 'ol/interaction';
+import { Circle as CircleStyle, Fill, Style } from 'ol/style';
+import { Tile as TileLayer, Vector as VectorLayer } from 'ol/layer';
+import { Draw, Modify, Snap } from 'ol/interaction';
+import Overlay from 'ol/Overlay';
+import { toStringHDMS } from 'ol/coordinate';
+import { toLonLat } from 'ol/proj';
      
 @Component({
     selector: 'map',
@@ -15,6 +18,11 @@ import {Draw, Modify, Snap} from 'ol/interaction';
 
 export class MapComponent implements OnInit { 
     name= '';
+
+    @ViewChild('popupContent') popupContent: ElementRef;
+
+    container = document.getElementById('popup');
+    closer = document.getElementById('popup-closer');
 
     map: Map;
 
@@ -27,6 +35,15 @@ export class MapComponent implements OnInit {
                 color: '#ffcc33',
             }),
         }),
+    });
+
+    overlay = new Overlay({
+        element: this.container,
+        autoPan: {
+            animation: {
+                duration: 250,
+            },
+        },
     });
 
     modify = new Modify({
@@ -47,6 +64,7 @@ export class MapComponent implements OnInit {
             center: [0, 0],
             zoom: 1,
         }),
+        overlays: [this.overlay],
         layers: [
             new TileLayer({
                 source: new OSM(),
@@ -60,9 +78,20 @@ export class MapComponent implements OnInit {
         });
     } 
 
-    addInteractions(): void {
+    addInteractions(event): void {
         this.map.addInteraction(this.modify);
         this.map.addInteraction(this.draw);
         this.map.addInteraction(this.snap);
+
+        const coordinate = this.map.getEventCoordinate(event)
+        const hdms = toStringHDMS(toLonLat(coordinate));
+        this.popupContent.nativeElement.innerHTML = `<p>You clicked here:</p><code>${hdms}</code>`;
+        this.overlay.setPosition(coordinate);
+    }
+
+    closePopup(): boolean {
+        this.overlay.setPosition(undefined);
+        this.closer.blur();
+        return false;
     }
 }
